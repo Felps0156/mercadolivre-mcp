@@ -1,4 +1,4 @@
-"""Fixed-origin HTTPS client for token exchange and identity only."""
+"""Fixed-origin HTTPS client; only the OAuth slice's routes are active."""
 
 import json
 import socket
@@ -112,14 +112,19 @@ class MercadoLivreClient:
 
     BASE = "https://api.mercadolibre.com"
 
-    def __init__(self):
+    def __init__(self, *, connect_timeout: float = 5, read_timeout: float = 30):
+        if not 0 < connect_timeout <= 30 or not 0 < read_timeout <= 60:
+            raise DomainError("CONFIGURATION_ERROR", "Timeout HTTP fora da faixa permitida.")
+        self.timeout = (connect_timeout, read_timeout)
+        self.lock = threading.RLock()
         self.session = requests.Session()
         self.session.mount("https://", DeadlineAdapter(max_retries=0))
         self.session.trust_env = False  # No ambient proxy, netrc or CA overrides.
         self.session.headers.update({"Accept": "application/json"})
 
     def close(self):
-        self.session.close()
+        with self.lock:
+            self.session.close()
 
     def _request(self, method: str, path: str, *, token=None, form=None) -> dict:
         if (method, path) not in {("GET", "/users/me"), ("POST", "/oauth/token")}:
@@ -127,9 +132,9 @@ class MercadoLivreClient:
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         response = None
         try:
-            with self.session.request(
+            with self.lock, self.session.request(
                 method, self.BASE + path, headers=headers, data=form,
-                timeout=(5, 30), allow_redirects=False, verify=True, stream=True,
+                timeout=self.timeout, allow_redirects=False, verify=True, stream=True,
             ) as response:
                 if response.status_code != 200:
                     if response.status_code == 401:

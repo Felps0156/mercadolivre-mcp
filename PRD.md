@@ -8,7 +8,7 @@
 | Empresa | Dias Moto Peças — comércio eletrônico de peças e acessórios para motocicletas |
 | Versão planejada | V1 / MVP, exclusivamente de leitura comercial |
 | Fonte de requisitos | Arquivo fornecido `Texto colado(7).txt` |
-| Situação | Sprint 0 encerrada com ressalvas por aprovação de Felipe (§24); viabilidade HTTPS local confirmada; recorte OAuth exercitado localmente, grant/API reais pendentes; Sprint 1 não iniciada integralmente |
+| Situação | Sprint 0 encerrada com ressalvas (§24); Sprint 1 executada e verificada localmente sem conta (§25); recorte OAuth administrativo exercitado, grant/API reais pendentes; nenhuma ferramenta MCP registrada ainda |
 | Ambiente alvo | Windows, VS Code, Python 3.13 e Hermes executado localmente |
 
 ## 1. Finalidade e regras de uso deste documento
@@ -118,7 +118,7 @@ O aumento de vendas é uma hipótese de benefício, não um critério garantido 
 | D02 | Viabilidade de callback HTTPS local, host e certificado | Felipe + desenvolvedor | Sprint 0 | Confirmada: URI https://127.0.0.1:8000/callback aceita segundo Felipe; CA exclusiva em CurrentUser Root, TLS padrão/cadeia Windows passaram e Felipe confirmou diagnóstico no navegador sem aviso. Grant real não iniciado |
 | D03 | Limites atuais de pedidos, visitas e bulk | Desenvolvedor | Sprint 0 | Parcial: scan/bulk e visitas documentados; confirmar teto de pedidos, lote do novo bulk e retenção/fronteiras de visitas via fonte oficial/suporte |
 | D04 | Sintaxe MCP da versão instalada do Hermes | Desenvolvedor | Sprint 0/6 | CLI 0.22.2 e sintaxe identificadas; Python absoluto + PYTHONPATH explícito propostos no README; descoberta e timeout efetivo pendentes da Sprint 6 |
-| D05 | Versões compatíveis das dependências | Desenvolvedor | Sprint 1 | Recorte OAuth exercitado/reinstalado em Python 3.13.15 com requirements fixado; stack completa com FastMCP/tzdata e servidor MCP continuam pendentes |
+| D05 | Versões compatíveis das dependências | Desenvolvedor | Sprint 1 | FastMCP 4.1.3/tzdata 2026.5 e demais dependências fixadas; reinstalação limpa/stdio sem conta verificados em Python 3.13.15; integração e ferramentas reais permanecem pendentes |
 
 Ausência de credenciais não bloqueia fundação, contratos e documentação. Ausência de um callback HTTPS viável bloqueia a conclusão da autenticação real; não deve ser mascarada por token manual colado no chat, HTTP presumido ou serviço externo criado sem decisão de escopo.
 
@@ -597,25 +597,25 @@ Cada tarefa deve ser pequena o suficiente para produzir uma alteração verific�
 
 **Objetivo:** estabelecer ambiente reproduzível e base utilizável sem a conta. **Entregável:** servidor mínimo, cliente HTTP básico, schemas e configuração.
 
-- [ ] S1.01 — Confirmar instalação do Python 3.13 e funcionamento de SSL no Windows alvo.
+- [x] S1.01 — Confirmar instalação do Python 3.13 e funcionamento de SSL no Windows alvo.
 - [x] S1.02 — Criar `.venv` na raiz sem alterar ambientes de outros projetos.
-- [ ] S1.03 — Instalar somente FastMCP, requests, Pydantic, python-dotenv, keyring e tzdata, com transitivas necessárias.
-- [ ] S1.04 — Registrar versões verificadas em `requirements.txt`; confirmar instalação reproduzível em ambiente limpo.
-- [ ] S1.05 — Criar a estrutura mínima `src` com os módulos que serão efetivamente implementados, sem arquivos arquiteturais adicionais vazios.
-- [ ] S1.06 — Preparar `.gitignore` para `.env`, `.venv`, caches, runtime e material sensível do callback.
-- [ ] S1.07 — Criar `.env.example` com nomes documentados e placeholders, sem dados de conta.
-- [ ] S1.08 — Implementar carregamento de configuração pela raiz do projeto e validação de fuso, limites e campos locais.
-- [ ] S1.09 — Definir `Money`, `Period`, `ToolError`, `Warning`, `Pagination`, `Metadata` e envelope de resposta.
-- [ ] S1.10 — Implementar validação de datas inclusivas, limites, IDs e serialização de valores Decimal.
-- [ ] S1.11 — Configurar logging em stderr com remoção de segredos e identificador local de requisição.
-- [ ] S1.12 — Criar a composição do FastMCP em `server.py`, sem import circular e sem chamada de rede durante import.
-- [ ] S1.13 — Implementar `requests.Session` central com TLS, host fixo e timeouts configuráveis.
-- [ ] S1.14 — Implementar allowlist de métodos/rotas e bloqueio de redirects autenticados.
-- [ ] S1.15 — Preparar o ciclo de vida para fechar sessão e liberar recursos no encerramento.
-- [ ] S1.16 — Iniciar o servidor manualmente em stdio e confirmar que logs não contaminam stdout.
-- [ ] S1.17 — Documentar comandos de ambiente e dependências no README; não registrar ferramentas comerciais fictícias para simular funcionamento.
-- [ ] S1.ACEITE — Verificar instalação limpa, inicialização, configuração inválida e serialização monetária com exemplos locais claramente sintéticos.
-- [ ] S1.CONCLUSAO — Marcar a sprint concluída quando a base estiver executável e os resultados das verificações estiverem registrados.
+- [x] S1.03 — Instalar somente FastMCP, requests, Pydantic, python-dotenv, keyring e tzdata, com transitivas necessárias.
+- [x] S1.04 — Registrar versões verificadas em `requirements.txt`; confirmar instalação reproduzível em ambiente limpo.
+- [x] S1.05 — Criar a estrutura mínima `src` com os módulos que serão efetivamente implementados, sem arquivos arquiteturais adicionais vazios.
+- [x] S1.06 — Preparar `.gitignore` para `.env`, `.venv`, caches, runtime e material sensível do callback.
+- [x] S1.07 — Criar `.env.example` com nomes documentados e placeholders, sem dados de conta.
+- [x] S1.08 — Implementar carregamento de configuração pela raiz do projeto e validação de fuso, limites e campos locais.
+- [x] S1.09 — Definir `Money`, `Period`, `ToolError`, `Warning`, `Pagination`, `Metadata` e envelope de resposta.
+- [x] S1.10 — Implementar validação de datas inclusivas, limites, IDs e serialização de valores Decimal.
+- [x] S1.11 — Configurar logging em stderr com remoção de segredos e identificador local de requisição.
+- [x] S1.12 — Criar a composição do FastMCP em `server.py`, sem import circular e sem chamada de rede durante import.
+- [x] S1.13 — Implementar `requests.Session` central com TLS, host fixo e timeouts configuráveis.
+- [x] S1.14 — Implementar allowlist de métodos/rotas e bloqueio de redirects autenticados.
+- [x] S1.15 — Preparar o ciclo de vida para fechar sessão e liberar recursos no encerramento.
+- [x] S1.16 — Iniciar o servidor manualmente em stdio e confirmar que logs não contaminam stdout.
+- [x] S1.17 — Documentar comandos de ambiente e dependências no README; não registrar ferramentas comerciais fictícias para simular funcionamento.
+- [x] S1.ACEITE — Verificar instalação limpa, inicialização, configuração inválida e serialização monetária com exemplos locais claramente sintéticos.
+- [x] S1.CONCLUSAO — Marcar a sprint concluída quando a base estiver executável e os resultados das verificações estiverem registrados.
 
 ### Sprint 2 — OAuth, callback e ciclo de vida dos tokens
 
@@ -967,7 +967,15 @@ O encerramento é **com ressalvas explícitas**, não confirmação integral de 
 | S0.10 / D03 — teto de paginação de pedidos | Desenvolvedor | Obter confirmação oficial/suporte antes de fixar limites na Sprint 3 (S3.09–S3.15); precisão horária documentada; preservar PARTIAL_DATA se cobertura não puder ser comprovada |
 | S0.12 / D03 — retenção e fronteiras de visitas | Desenvolvedor | Esclarecer contrato oficial e observar limites autorizados na Sprint 4 (S4.13/S4.18); intervalo máximo de 150 dias e um ID por GET já documentados; não atribuir retenção inexistente |
 
-Lote máximo do novo bulk permanece em D03 para S4.05; D05 cobre a stack completa ainda não instalada. O recorte OAuth antecipado continua **implementado/exercitado localmente, pendente de grant e validação reais**. Não foram obtidos/renovados tokens reais nem consultado `/users/me`; VM03/VM05 e os aceites de conta permanecem pendentes.
+Lote máximo do novo bulk permanece em D03 para S4.05; **no encerramento da Sprint 0**, D05 ainda cobria a stack completa não instalada (atualizada em §25). O recorte OAuth antecipado continua **implementado/exercitado localmente, pendente de grant e validação reais**. Não foram obtidos/renovados tokens reais nem consultado `/users/me`; VM03/VM05 e os aceites de conta permanecem pendentes.
 
-**Handoff:** Sprint 0 encerrada com essas ressalvas, sem apagar pendências. A Sprint 1 integral permanece aguardando **nova autorização expressa**; suas marcações foram preservadas, inclusive S1.02 preexistente. Nenhum código, credencial, certificado ou instalação adicional foi alterado neste encerramento; apenas documentação/checklist. Sem commit/push.
+**Handoff histórico de §24:** Sprint 0 encerrada com essas ressalvas, sem apagar pendências. Naquele momento a Sprint 1 aguardava autorização; **Felipe a solicitou posteriormente, com execução em §25**. Nenhum código, credencial, certificado ou instalação adicional foi alterado no encerramento da Sprint 0; apenas documentação/checklist. Sem commit/push naquele marco.
+
+## 25. Execução da Sprint 1 — 22/10/2026
+
+Felipe solicitou expressamente executar a Sprint 1 de §16, sem autorizar Sprint 2 nem grant OAuth. S1.02 já estava marcado e não foi refeito: `.venv` Python 3.12 original preservada; o ambiente alvo `.venv-oauth` Python 3.13.15, criado no recorte anterior, recebeu FastMCP/tzdata e transitivas. `requirements.txt` foi fixado com versões efetivamente instaladas e reinstalado em ambiente limpo (73 pacotes, `uv pip check` passou). SSL padrão obteve HTTPS 200 em host público; `src.auth check` passou sem trocar código OAuth.
+
+Criado `src/server.py` como composição FastMCP stdio com configuração pela raiz, stderr, request_id e lifespan que fecha a sessão; nenhuma rede é acessada no import. Ampliados `src/schemas.py` (dinheiro decimal serializado como texto, período inclusivo/semiaberto, envelope e validação local) e `src/client.py` (timeout configurável, lock da Session, host fixo e allowlist limitada ao recorte OAuth). `.env.example` e `.gitignore` foram revisados. Não há `tools.py` vazio nem ferramentas provisórias: descoberta stdio local, fora do diretório do projeto e sem `.env`, listou **zero** ferramentas; a descoberta das oito pelo Hermes pertence à Sprint 6. O servidor não faz autorização, não consulta conta e não libera VM01/VM02. Orçamentos de análise são validados na configuração, mas ainda não usados em coleta inexistente.
+
+Evidências S1-E01–S1-E07, ambiente, procedimento, esperado/observado e bloqueios estão no README. `python -m compileall -q src`, `uv pip check`, stdio com cliente real FastMCP, stdout vazio com stdin fechado, configurações inválidas e exemplos sintéticos de Decimal/datas/IDs passaram. Não foi criada suíte automatizada, não houve commit/push nem alteração de certificado ou credencial. Pendências S0.05/S0.10/S0.12 conservam seus donos/etapas; OAuth real, métricas, ferramentas e validação no Hermes exigem as sprints posteriores. S1.ACEITE/S1.CONCLUSAO referem-se **somente à fundação sem conta**, não à V1 validada para uso local.
 

@@ -1,11 +1,16 @@
 .venv/
 .env
 .venv-oauth/
+.venv-*/
 .env.*
 !.env.example
 __pycache__/
 *.py[cod]
 .runtime/
+runtime/
+tls/
+*.log
+*.crt
 *.pem
 *.key
 *.pfx

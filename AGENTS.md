@@ -1,6 +1,6 @@
 # mercadolivre-mcp
 
-MCP local para o Hermes analisar a conta Mercado Livre da Dias Moto Peças. `PRD.md` é a fonte de requisitos; §§23–24 registram o recorte OAuth antecipado e a Sprint 0 encerrada com ressalvas por Felipe. Há `src/auth.py`, `client.py`, `schemas.py`, `__init__.py` e requirements, mas ainda nenhum servidor FastMCP ou ferramentas MCP registradas. Check/TLS padrão passaram; Felipe confirmou navegador sem aviso. Grant/API reais pendentes. Não executar o restante da Sprint 1 sem nova autorização.
+MCP local para o Hermes analisar a conta Mercado Livre da Dias Moto Peças. `PRD.md` é a fonte de requisitos; §§23–25 registram o recorte OAuth, Sprint 0 com ressalvas e Sprint 1 validada localmente sem conta. Há `src/auth.py`, `client.py`, `schemas.py`, `server.py`, `__init__.py` e requirements completos. Servidor FastMCP stdio mínimo inicia, mas ainda registra zero ferramentas reais; `tools.py` não existe. Check/TLS padrão passaram; Felipe confirmou navegador sem aviso. Grant/API reais pendentes. Não iniciar Sprint 2 sem autorização separada.
 
 ## Escopo e execução do trabalho
 
@@ -15,7 +15,7 @@ MCP local para o Hermes analisar a conta Mercado Livre da Dias Moto Peças. `PRD
 ## Ambiente e comandos
 
 - Ambiente OAuth validado: `.venv-oauth`/CPython 3.13.15 no Windows. A `.venv` original 3.12.10 foi preservada; não usá-la inadvertidamente.
-- `requirements.txt` fixa somente requests/Pydantic/python-dotenv/keyring e transitivas exercitadas, com reinstalação limpa; FastMCP/tzdata permanecem futuros. Não instalar LangChain.
+- `requirements.txt` fixa requests/Pydantic/python-dotenv/keyring/FastMCP/tzdata e transitivas exercitadas, com reinstalação limpa em Python 3.13.15. Não instalar LangChain.
 - Comandos da CLI administrativa OAuth (PowerShell na raiz), com diagnósticos em stderr e sem tokens. `authorize` ainda bloqueia com configuração inválida ou TLS não confiável:
 
 ```powershell
@@ -26,7 +26,7 @@ MCP local para o Hermes analisar a conta Mercado Livre da Dias Moto Peças. `PRD
 ```
 
 - Sintaxe/imports exercitados: `.venv-oauth/Scripts/python.exe -m compileall -q src`; dependências: `uv pip check --python .venv-oauth/Scripts/python.exe`. Sem build/lint/suíte automatizada configurados.
-- O recorte é CLI administrativa, não uma nona ferramenta. `python -m src.server` ainda não é executável; não simular MCP descobrível.
+- O recorte OAuth é CLI administrativa, não uma nona ferramenta. `python -m src.server` inicia stdio sem credenciais e sem ferramentas; handshake local foi exercitado, mas descoberta das oito no Hermes ainda não. Não simular ferramentas comerciais.
 
 ## Organização e contratos previstos
 

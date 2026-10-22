@@ -1,6 +1,6 @@
 # mercadolivre-mcp
 
-MCP local de leitura comercial da conta Dias Moto Peças para o Hermes. O PRD é a fonte de requisitos. Estado em 22/10/2026: **Sprint 0 encerrada com ressalvas por aprovação de Felipe; recorte OAuth implementado e exercitado localmente, pendente de grant/validação reais**. A Sprint 1 integral aguarda nova autorização. Ainda não há servidor MCP/FastMCP nem ferramentas comerciais registradas.
+MCP local de leitura comercial da conta Dias Moto Peças para o Hermes. O PRD é a fonte de requisitos. Estado em 22/10/2026: **Sprint 0 encerrada com ressalvas; Sprint 1 implementada e validada localmente sem conta**. O recorte OAuth administrativo continua pendente de grant/validação reais. O servidor FastMCP stdio existe, mas não registra ferramentas fictícias; as oito ferramentas reais pertencem às Sprints 2–5.
 
 ## Encerramento da Sprint 0
 
@@ -8,24 +8,55 @@ Felipe confirmou o diagnóstico no navegador sem aviso de certificado e autorizo
 
 Permanecem abertos, sem alegação de confirmação: **S0.05** (permissões/PKCE no portal, antes do grant na Sprint 2), **S0.10** (limites de paginação, Sprint 3) e **S0.12** (retenção/fronteiras de visitas, Sprint 4). Responsáveis e condições constam no PRD §24; D03 também conserva a confirmação do lote do novo bulk. Isso não impede o encerramento administrativo aprovado, mas impede tratar esses contratos e a V1 como integralmente validados.
 
-Não houve grant OAuth, renovação real ou consulta autenticada a `/users/me`. Não iniciar a Sprint 1 ou consentimento OAuth automaticamente a partir desta aprovação.
+Não houve grant OAuth, renovação real ou consulta autenticada a `/users/me`. A Sprint 1 foi autorizada por pedido posterior de Felipe; essa autorização não inclui iniciar consentimento OAuth ou avançar à Sprint 2.
+
+## Sprint 1 — fundação sem conta
+
+Ambiente alvo: Windows 11, CPython 3.13.15; a `.venv` antiga 3.12 permanece intocada. A `.venv-oauth` existente foi ampliada para a fundação (FastMCP 4.1.3 e tzdata 2026.5); `requirements.txt` fixa as seis dependências diretas do PRD e suas transitivas exercitadas. Instalação reproduzível em PowerShell, na raiz, para quem ainda não possui o ambiente:
+
+```powershell
+uv venv .venv-oauth --python 3.13.15
+uv pip install --python .venv-oauth\Scripts\python.exe -r requirements.txt
+uv pip check --python .venv-oauth\Scripts\python.exe
+.\.venv-oauth\Scripts\python.exe -m src.server
+```
+
+O servidor usa stdio e aguarda um cliente MCP; encerrar com Ctrl+C. Logs próprios em stderr, stdout somente protocolo. Não há banner próprio. `.env` é opcional para a fundação e carregado pela raiz do projeto independentemente do diretório de execução; nunca transmitir credenciais por chat. `.env.example` documenta os nomes sem valores privados. `BUSINESS_TIMEZONE=America/Sao_Paulo`, `LOG_LEVEL=INFO`, timeouts 5/30 segundos e orçamentos de 500 GETs/180 segundos são defaults locais validados na inicialização. Faixas internas: conexão até 30s, leitura até 60s, máximo 500 requisições/180s; valores não positivos são erro. Os orçamentos estão **configurados, ainda não aplicados a análises** que não existem. Configuração OAuth/PKCE/certificado continua na CLI administrativa e só é exigida ao iniciar fluxo OAuth, não ao descobrir o servidor vazio.
+
+`src/server.py` compõe configuração, logs e lifespan de `MercadoLivreClient`, que fecha a `requests.Session` no encerramento. `src/client.py` usa origem HTTPS fixa, TLS ativo, timeouts 5/30 configuráveis, `trust_env=False`, lock da sessão, allowlist **atual** apenas GET `/users/me` e POST `/oauth/token`, sem redirects ou retry de POST. Política de retries, orçamento e rotas comerciais adicionais são Sprint 3; não inferir que estão prontos. `src/schemas.py` define `Money`, `Period`, `ToolError`, `Warning`, `Pagination`, `Metadata` e `ToolResult`, além de validação local de IDs, limites, offset e datas inclusivas convertidas a intervalo semiaberto no fuso local. `Money.amount` sai como texto decimal com moeda explícita. Nenhum `tools.py` vazio foi criado e nenhuma ferramenta provisória foi registrada: a descoberta stdio devolve **zero** ferramentas nesta sprint; isso não satisfaz VM01/VM02/aceite da V1.
+
+### Registro de verificação manual da Sprint 1
+
+Referência: `2cbc7f5` + working tree da Sprint 1 (sem commit). Horário local UTC−03 em 22/10/2026; exemplos monetários e de IDs abaixo são sintéticos, sem consulta comercial e sem suíte automatizada.
+
+| ID | Data/hora | Código | Ambiente | Procedimento | Esperado | Observado | Situação |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| S1-E01 | 20:03 | `src/server.py`, `src/auth.py` | Windows 11 / CPython 3.13.15 | `ssl.create_default_context()`, GET HTTPS público com confiança padrão, `src.auth check` | SSL funcional sem grant | TLS HTTPS 200; check validou WinVault, certificado e URI; nenhum token real | Verificado localmente |
+| S1-E02 | 20:05 | `requirements.txt` | venv limpo no scratch / CPython 3.13.15 | `uv pip install -r requirements.txt`, `uv pip check`, imports e `ZoneInfo` | Reinstalação/compatibilidade | 73 pacotes fixados instalados, check compatível, FastMCP 4.1.3 e São Paulo disponíveis | Verificado localmente |
+| S1-E03 | 20:03 | `src/schemas.py` | `.venv-oauth` | Exemplos sintéticos: 123.40 BRL, 20–22/10, IDs e argumentos inválidos | Decimal em texto, fim exclusivo dia 23, erros explícitos | `123.40` com `BRL`; fim `2026-10-23T00:00:00-03:00`; 4 intervalos/4 argumentos inválidos recusados; NaN recusado | Exercício sintético |
+| S1-E04 | 20:04 | `src/client.py`, `src/server.py` | `.venv-oauth` | Examinar sessão e tentar rotas fora da allowlist sem enviar requisição | Destino/método proibidos | Base fixa HTTPS, `trust_env=False`, timeout configurado; 3 chamadas rejeitadas com `PERMISSION_DENIED` antes da rede | Exercício local, não API |
+| S1-E05 | 20:04–20:05 | `src/server.py` | `.venv-oauth` e venv limpo, código copiado sem `.env` para scratch | Cliente FastMCP conecta via subprocesso `-m src.server` fora da raiz e lista ferramentas; encerramento | Handshake stdio, sem banners em stdout, teardown | Conectou em ambos ambientes; lista vazia intencional; log `server_started/server_stopped` em stderr; sem rede comercial | Verificado localmente, não Hermes |
+| S1-E06 | 20:04 | `src/server.py` | cópia sem `.env` no scratch | Processo com stdin fechado e com fuso/orçamento/timeout inválidos, capturando canais | Saída stdout vazia; configuração inválida sanitizada | Normal: código 0, stdout 0 bytes; 3 configurações inválidas: código 1, stdout 0 bytes, apenas nomes de variáveis e erros em stderr | Verificado localmente |
+| S1-E07 | 20:04–20:10 | `.gitignore`, `.env.example`, `src/server.py` | Windows / Git | `git check-ignore`; mensagem sintética Bearer/query/secret pelo formatter | Segredos não versionáveis/logáveis | `.env`, chaves TLS, backup TLS, runtime e venv ignorados; fonte não ignorada; texto sintético redigido, inclusive campo JSON | Revisão/exercício local; não auditoria real de respostas MCP |
+
+Não foi executado grant OAuth, consulta autenticada, descoberta pelo Hermes ou reconciliação comercial. VM01 requer chamadas comerciais e `start_oauth` reais e continua pendente. S0.05/S0.10/S0.12 permanecem abertos nas sprints indicadas; não iniciar Sprint 2 sem autorização separada.
 
 ## Estado atual — recorte OAuth autorizado
 
 Felipe confirmou a criação da aplicação e o cadastro de **https://127.0.0.1:8000/callback**. Essa é a única URI deste recorte; as candidatas de porta 8443 no histórico abaixo estão superadas. O cadastro é evidência informada pelo responsável, não leitura direta do portal; permissões reais e PKCE habilitado ainda precisam ser conferidos.
 
-Foi autorizada expressamente a antecipação dos pré-requisitos mínimos e do recorte OAuth, **não a execução integral da Sprint 1**. Após a recusa inicial, Felipe autorizou instalar a CA local em 22/10/2026. Foi instalada uma CA exclusiva deste projeto em **CurrentUser\\Root**; nenhum aviso de segurança foi contornado e nenhum grant OAuth foi iniciado nesta etapa.
+Foi autorizada inicialmente a antecipação dos pré-requisitos mínimos e do recorte OAuth; **a Sprint 1 integral foi autorizada posteriormente nesta solicitação**. Após a recusa inicial, Felipe autorizou instalar a CA local em 22/10/2026. Foi instalada uma CA exclusiva deste projeto em **CurrentUser\\Root**; nenhum aviso de segurança foi contornado e nenhum grant OAuth foi iniciado nesta etapa.
 
 ### Arquivos e limites da implementação
 
 - `src/auth.py`: configuração pela raiz; compatibilidade explícita `ML_CLIENT_ID`/`CLIENT_ID` e `ML_CLIENT_SECRET`/`CLIENT_SECRET`, rejeitando conflitos; PKCE S256, state de uso único/5 minutos, listener HTTPS IPv4 loopback, WinVaultKeyring nativo, lock entre processos, rotação serializada e CLI administrativa. Não imprime tokens, state ou URL de autorização no terminal.
 - `src/client.py`: Session exclusivamente para GET `/users/me` e POST `/oauth/token`, TLS ativo, redirects bloqueados, sem netrc/proxy ambiente, timeout 5/30s, payload limitado e erros sanitizados. Watchdog de socket de 45s interrompe headers/corpo lentos, inclusive HTTP/1.0; o resolvedor DNS do sistema não é cancelável aqui, portanto não há garantia absoluta de tempo total. POST OAuth nunca tem retry automático. Resiliência/paginação comercial completa continua fora deste recorte.
 - `src/schemas.py`: envelope mínimo, erro seguro, projeção de identidade sem PII e registro de tokens com SecretStr; valores secretos só são desembrulhados na fronteira HTTP/cofre.
-- `src/__init__.py`: sem I/O no import. Nenhum `server.py`/`tools.py` vazio foi criado; ainda não há registro MCP de `start_oauth`.
+- `src/__init__.py`: sem I/O no import. `server.py` agora compõe o servidor mínimo; `tools.py` ainda não existe e `start_oauth` ainda não foi registrado como ferramenta MCP.
 - `.gitignore`: preserva `.env`/venv e protege `.venv-oauth`, variantes de env, caches, runtime e chaves/certificados. `.env.example` contém somente nomes/defaults, não os valores do arquivo local. **O `.env` existente não foi editado ou impresso.**
-- `requirements.txt`: versões diretas/transitivas exercitadas para este recorte, não a stack completa da V1. FastMCP e tzdata não foram instalados antecipadamente.
+- `requirements.txt`: versões diretas/transitivas do recorte OAuth preservadas e, na Sprint 1, acrescidas de FastMCP e tzdata com transitivas verificadas. Isso ainda não valida a V1 completa.
 
-O ambiente original `.venv` Python 3.12 foi preservado. Este recorte usa **`.venv-oauth` com CPython 3.13.15**. A instalação de requirements foi repetida em ambiente limpo no scratch e os imports passaram; `uv pip check` também passou.
+O ambiente original `.venv` Python 3.12 foi preservado. O recorte e a Sprint 1 usam **`.venv-oauth` com CPython 3.13.15**. A instalação de requirements foi repetida em ambiente limpo no scratch e os imports passaram; `uv pip check` também passou.
 
 ### TLS local — CA exclusiva instalada e confiança padrão verificada
 
@@ -48,7 +79,7 @@ Remoção futura da confiança desta CA, somente quando não mais necessária: e
 .\.venv-oauth\Scripts\python.exe -m src.auth profile
 ```
 
-`check` valida configuração, certificado carregável e escrita/leitura/remoção de um valor sintético no cofre, não autenticação da conta. Seu campo `browser_trust=not_checked` é fixo e não muda após instalar a CA. `tls-only` serve somente a rota diagnóstica e encerra; não dispara OAuth. `authorize` aguarda consentimento por até cinco minutos, sem expor códigos; `profile` só faz GET autenticado com credencial válida do cofre. Todos os diagnósticos da CLI vão a stderr, com stdout vazio. **Atualização de 22/10/2026:** `check` e confiança TLS padrão passaram; ainda não houve grant real nem observação no navegador.
+`check` valida configuração, certificado carregável e escrita/leitura/remoção de um valor sintético no cofre, não autenticação da conta. Seu campo `browser_trust=not_checked` é fixo e não muda após instalar a CA. `tls-only` serve somente a rota diagnóstica e encerra; não dispara OAuth. `authorize` aguarda consentimento por até cinco minutos, sem expor códigos; `profile` só faz GET autenticado com credencial válida do cofre. Todos os diagnósticos da CLI vão a stderr, com stdout vazio. **Atualização de 22/10/2026:** `check` e confiança TLS padrão passaram; Felipe confirmou o navegador (§ Sprint 0 acima); ainda não houve grant real.
 
 Renovação administrativa: `.\.venv-oauth\Scripts\python.exe -m src.auth refresh`, somente com tokens reais e em etapa acompanhada. Reautorização deliberada após falha: ação `reauthorize`; preserva vínculo ao vendedor anterior. Não trocar de conta silenciosamente: outro vendedor exige perfil local distinto definido pelo responsável, sem processos simultâneos por perfil.
 
