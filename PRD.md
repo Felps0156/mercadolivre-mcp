@@ -2,13 +2,13 @@
 
 | Campo | Definição |
 | --- | --- |
-| Versão do documento | 1.0 |
+| Versão do documento | 1.1 — revisão documental da Sprint 0 |
 | Data | 22/10/2026 |
 | Produto | MCP local do Mercado Livre para o Hermes AI |
 | Empresa | Dias Moto Peças — comércio eletrônico de peças e acessórios para motocicletas |
 | Versão planejada | V1 / MVP, exclusivamente de leitura comercial |
 | Fonte de requisitos | Arquivo fornecido `Texto colado(7).txt` |
-| Situação | Planejamento pronto para orientar implementação; código e integração real ainda não validados |
+| Situação | Sprint 0 encerrada com ressalvas por aprovação de Felipe (§24); viabilidade HTTPS local confirmada; recorte OAuth exercitado localmente, grant/API reais pendentes; Sprint 1 não iniciada integralmente |
 | Ambiente alvo | Windows, VS Code, Python 3.13 e Hermes executado localmente |
 
 ## 1. Finalidade e regras de uso deste documento
@@ -114,11 +114,11 @@ O aumento de vendas é uma hipótese de benefício, não um critério garantido 
 
 | ID | Decisão / confirmação | Responsável | Momento | Condição para avançar |
 | --- | --- | --- | --- | --- |
-| D01 | Aplicação criada e permissões mínimas disponíveis | Gestor + desenvolvedor | Sprint 0 | Checklist real da aplicação registrado, sem segredos |
-| D02 | Viabilidade de callback HTTPS local, host e certificado | Desenvolvedor | Sprint 0 | URI aceita no portal, roteada ao receptor local e certificado confiável no navegador |
-| D03 | Limites atuais de pedidos, visitas e bulk | Desenvolvedor | Sprint 0 | Fonte e limites registrados; pontos incertos permanecem explícitos |
-| D04 | Sintaxe MCP da versão instalada do Hermes | Desenvolvedor | Sprint 0/6 | Comando, argumentos, diretório e variáveis confirmados |
-| D05 | Versões compatíveis das dependências | Desenvolvedor | Sprint 1 | Instalação limpa em Python 3.13 e versões exatas registradas |
+| D01 | Aplicação criada e permissões mínimas disponíveis | Gestor + desenvolvedor | Sprint 0 | Criação informada por Felipe; configuração local corrigida e check real passou. Confirmar titularidade/permissões/PKCE efetivos no portal; nenhum grant real executado |
+| D02 | Viabilidade de callback HTTPS local, host e certificado | Felipe + desenvolvedor | Sprint 0 | Confirmada: URI https://127.0.0.1:8000/callback aceita segundo Felipe; CA exclusiva em CurrentUser Root, TLS padrão/cadeia Windows passaram e Felipe confirmou diagnóstico no navegador sem aviso. Grant real não iniciado |
+| D03 | Limites atuais de pedidos, visitas e bulk | Desenvolvedor | Sprint 0 | Parcial: scan/bulk e visitas documentados; confirmar teto de pedidos, lote do novo bulk e retenção/fronteiras de visitas via fonte oficial/suporte |
+| D04 | Sintaxe MCP da versão instalada do Hermes | Desenvolvedor | Sprint 0/6 | CLI 0.22.2 e sintaxe identificadas; Python absoluto + PYTHONPATH explícito propostos no README; descoberta e timeout efetivo pendentes da Sprint 6 |
+| D05 | Versões compatíveis das dependências | Desenvolvedor | Sprint 1 | Recorte OAuth exercitado/reinstalado em Python 3.13.15 com requirements fixado; stack completa com FastMCP/tzdata e servidor MCP continuam pendentes |
 
 Ausência de credenciais não bloqueia fundação, contratos e documentação. Ausência de um callback HTTPS viável bloqueia a conclusão da autenticação real; não deve ser mascarada por token manual colado no chat, HTTP presumido ou serviço externo criado sem decisão de escopo.
 
@@ -197,12 +197,14 @@ Base comercial fixa: `https://api.mercadolibre.com`. A ferramenta não aceita um
 | Detalhe de pedido | `GET /orders/{order_id}` | Somente enriquecimento interno se a busca não fornecer campos essenciais; validar vendedor | S03 |
 | IDs de anúncios próprios | `GET /users/{user_id}/items/search` | `status`, `limit`, `offset` ou `search_type=scan` com `scroll_id` conforme modo | S04 |
 | Detalhe de anúncio | `GET /items/{item_id}` | Validar `seller_id` antes de expor o resultado | S04 |
-| Enriquecimento de vários anúncios | `GET /items/bulk` | `ids`; seleção de atributos com prefixo `body.` e falhas por elemento | S04 |
-| Visitas no período | `GET /items/visits` | `ids`, `date_from`, `date_to`; limites e semântica temporal próprios | S05 |
+| Enriquecimento de vários anúncios | `GET /items/bulk` | `ids`; seleção `body.<campo>`; `id` raiz e `status_code` por elemento; máximo do novo lote ainda não confirmado | S04 |
+| Visitas no período | `GET /items/visits` | `ids` com exatamente um anúncio por GET, `date_from`, `date_to`; intervalo até 150 dias; retenção e fronteiras exatas pendentes | S05 |
 
 Este é o registro de rotas **planejadas**, não de chamadas já executadas. Ao implementar, atualizar esta tabela com os recursos realmente utilizados e retirar os desnecessários.
 
 **Mudança já identificada:** a documentação de itens consultada orienta substituir `/items?ids=` por `/items/bulk?ids=`, com migração até 25/10/2026; o novo formato usa `status_code` e seleção `body.<campo>`. Desenvolver diretamente com a rota nova e validar seu formato real; não copiar o parser do multiget antigo [S04].
+
+**Revisão da Sprint 0 (22/10/2026):** S03 informa histórico de pedidos de até 12 meses, exclusão de cancelados na busca como vendedor e filtros temporais com precisão de hora. O exemplo `paging.limit=50` não confirma máximo oficial nem teto de offset. S04 documenta scan de itens para mais de 1.000 resultados, cursor de 5 minutos e página padrão 50/máximo 100; o projeto mantém máximo interno 50. Os 20 resultados do Multiget legado não comprovam o limite do novo bulk. S05 limita o intervalo de visitas a 150 dias e a consulta a **um ID por requisição**; não confirma retenção histórica nem equivalência de fronteiras com o dia de São Paulo. Evidências, fontes e pendências estão no README e §22.
 
 ### Paginação e cobertura
 
@@ -219,7 +221,7 @@ Este é o registro de rotas **planejadas**, não de chamadas já executadas. Ao 
 | Limite | Padrão do projeto | Regra |
 | --- | --- | --- |
 | Página de listagem | 20; máximo interno 50 | O menor limite entre projeto e endpoint prevalece |
-| Anúncios por chamada de visitas | 1 a 20 IDs únicos | Dividir em lotes menores se a API exigir |
+| Anúncios por chamada da ferramenta de visitas | 1 a 20 IDs únicos | A API documenta um ID por GET; dividir sequencialmente e contar todas as requisições no orçamento |
 | `top_n` | 10; entre 1 e 50 | Limita somente rankings, nunca a população usada no total |
 | Período de vendas por agregação | Até 120 dias | Permite analisar aproximadamente três meses; respeitar retenção oficial |
 | Consultas por agregação | Até 500 GETs ou 180 segundos | Incluir enriquecimentos e tentativas no orçamento; comparação compartilha esse orçamento |
@@ -311,7 +313,7 @@ Erros de validação gerados antes da execução pelo FastMCP podem usar o erro 
 
 **Saída:** por ID, visitas totais, período solicitado e efetivamente coberto, situação de disponibilidade e eventuais erros individuais. Formatos de resposta de um ID e múltiplos IDs devem ser normalizados para a mesma lista.
 
-**Processamento:** validar propriedade dos anúncios antes de consultar tráfego, reutilizando evidências obtidas na mesma execução. Respeitar janela máxima e antiguidade dos dados. A documentação consultada menciona limite de 150 dias; confirmar se corresponde à extensão do intervalo, à antiguidade ou a ambas antes de fixar a tradução dos filtros [S05]. Dividir janelas não deve ser usado para tentar contornar retenção indisponível.
+**Processamento:** validar propriedade dos anúncios antes de consultar tráfego, reutilizando evidências obtidas na mesma execução. Para múltiplos IDs, fazer GETs sequenciais com um ID por requisição, conforme o erro de limite documentado [S05]. A extensão máxima documentada é 150 dias; antiguidade disponível, inclusividade da fronteira final e aceitação de timestamps com offset ainda precisam de confirmação. Os exemplos retornam limites em UTC; não presumir equivalência com dias de São Paulo. Se necessário, devolver período efetivo e advertência. Dividir janelas não deve ser usado para tentar contornar retenção indisponível.
 
 **Aceite:** anúncio sem dado retorna `null` com motivo; zero real permanece zero; falha parcial não vira tráfego inexistente; visitas não são chamadas de compradores únicos ou tráfego orgânico.
 
@@ -423,9 +425,9 @@ Estado e estoque atuais não comprovam disponibilidade histórica. Queda simult�
 
 ### Callback HTTPS local
 
-A documentação oficial consultada exige Redirect URI HTTPS exata [S06]. **Não presumir que `http://localhost` será aceito**. A preferência é um receptor HTTPS ligado ao loopback no próprio Windows, com nome resolvido localmente e certificado confiável, desde que o portal aceite essa URI.
+A documentação oficial consultada exige Redirect URI HTTPS exata [S06]. **Não presumir que `http://localhost` será aceito**. Felipe informou cadastro bem-sucedido de **`https://127.0.0.1:8000/callback`**, que substitui a candidata anterior de porta 8443. O recorte implementado aceita somente essa URI e liga o receptor ao IPv4 loopback. Após autorização posterior de Felipe, a CA exclusiva foi instalada em CurrentUser Root e o callback passou na confiança TLS padrão e cadeia Windows. Confirmação visual no navegador e grant real permanecem separados/pendentes. Cadastro no portal, TLS local e grant real são evidências distintas.
 
-A Sprint 0 deve comprovar essa viabilidade. Certificado e chave são configuração local; não versionar chave privada nem desabilitar TLS do cliente HTTP. O README deverá documentar o host, porta, URI, configuração do certificado e remoção posterior, sem inventar um endereço já aprovado. Se a plataforma não aceitar a solução local, registrar o impedimento e a menor mudança de requisito necessária. Não adicionar túnel, servidor externo ou coleta do código via chat como solução automática.
+A Sprint 0 deve comprovar essa viabilidade. Certificado e chave são configuração local; não versionar chave privada nem desabilitar TLS do cliente HTTP. O README documenta o roteiro proposto de host, porta, URI, certificado e remoção, não uma instalação aprovada. A proposta é mkcert como utilitário de desenvolvimento (não dependência do MCP), com material em `%LOCALAPPDATA%\DiasMoto\mercadolivre-mcp\tls`, fora do OneDrive/repositório. Instalação de ferramenta/CA e diagnóstico local exigem acompanhamento e consentimento. Se a plataforma não aceitar a solução local, registrar o impedimento e a menor mudança de requisito necessária. Não adicionar túnel, servidor externo ou coleta do código via chat como solução automática.
 
 ### Cofre e rotação
 
@@ -571,30 +573,32 @@ Cada tarefa deve ser pequena o suficiente para produzir uma alteração verific�
 
 **Objetivo:** eliminar decisões bloqueantes antes da implementação. **Entregável:** PRD revisado, tabela de endpoints e registro de pendências no próprio PRD/README.
 
-- [ ] S0.01 — Listar os arquivos existentes na raiz e identificar se há código, configuração ou repositório Git.
-- [ ] S0.02 — Ler README e orientações locais existentes; registrar o que pode ser reaproveitado sem sobrescrever trabalho válido.
-- [ ] S0.03 — Conferir o escopo com este PRD: oito ferramentas, leitura comercial e ausência de infraestrutura adicional.
-- [ ] S0.04 — Consultar documentação oficial de OAuth e registrar campos, URI, PKCE, expiração e rotação aplicáveis.
+**Estado:** encerrada **com ressalvas**, por aprovação expressa de Felipe em 22/10/2026 (§24). A viabilidade HTTPS foi comprovada. S0.05/S0.10/S0.12 continuam abertos como verificações externas transferidas, não como fatos confirmados; S0.08 foi resolvido como não aplicável. Encerramento não autoriza iniciar a Sprint 1 nem declara OAuth/API reais validados.
+
+- [x] S0.01 — Listar os arquivos existentes na raiz e identificar se há código, configuração ou repositório Git.
+- [x] S0.02 — Ler README e orientações locais existentes; registrar o que pode ser reaproveitado sem sobrescrever trabalho válido.
+- [x] S0.03 — Conferir o escopo com este PRD: oito ferramentas, leitura comercial e ausência de infraestrutura adicional.
+- [x] S0.04 — Consultar documentação oficial de OAuth e registrar campos, URI, PKCE, expiração e rotação aplicáveis.
 - [ ] S0.05 — Confirmar criação/acesso à aplicação e listar permissões mínimas oferecidas pelo portal, sem copiar segredos.
-- [ ] S0.06 — Confirmar requisitos atuais para Redirect URI HTTPS e validar se uma URI com receptor local é aceita pela aplicação.
-- [ ] S0.07 — Definir host, porta, resolução local e certificado confiável para o callback; registrar o procedimento de configuração.
-- [ ] S0.08 — Se a solução local não for aceita, registrar D02 como bloqueada e descrever a menor alteração necessária; não instalar infraestrutura externa automaticamente.
-- [ ] S0.09 — Confirmar rotas de perfil e pedidos, formato das datas, estados retornados e eventuais exclusões padrão de cancelamentos.
+- [x] S0.06 — Confirmar requisitos atuais para Redirect URI HTTPS e validar se uma URI com receptor local é aceita pela aplicação.
+- [x] S0.07 — Definir host, porta, resolução local e certificado confiável para o callback; registrar o procedimento de configuração.
+- [x] S0.08 — Se a solução local não for aceita, registrar D02 como bloqueada e descrever a menor alteração necessária; não instalar infraestrutura externa automaticamente.
+- [x] S0.09 — Confirmar rotas de perfil e pedidos, formato das datas, estados retornados e eventuais exclusões padrão de cancelamentos.
 - [ ] S0.10 — Confirmar limites de paginação de pedidos e granularidade mínima para particionar períodos completos.
-- [ ] S0.11 — Confirmar busca de itens, scan, validade de cursor e formato atual de `/items/bulk`.
+- [x] S0.11 — Confirmar busca de itens, scan, validade de cursor e formato atual de `/items/bulk`.
 - [ ] S0.12 — Confirmar extensão, antiguidade e semântica dos intervalos de visitas; registrar os limites sem inferir retenção inexistente.
-- [ ] S0.13 — Consultar documentação FastMCP para Python suportado, `stdio`, ferramentas síncronas e saídas estruturadas.
-- [ ] S0.14 — Identificar a versão instalada do Hermes e sua configuração oficial para subprocesso MCP local.
-- [ ] S0.15 — Registrar decisões D01–D05, fontes e pendências; revisar qualquer diferença entre documentação atual e este PRD.
-- [ ] S0.ACEITE — Revisar a entrega: nenhuma rota foi inventada e cada bloqueio externo tem responsável e próximo passo registrado.
-- [ ] S0.CONCLUSAO — Marcar a sprint concluída somente após cumprir o aceite; pendências de credenciais podem permanecer identificadas, mas viabilidade de callback deve estar decidida ou formalmente bloqueada.
+- [x] S0.13 — Consultar documentação FastMCP para Python suportado, `stdio`, ferramentas síncronas e saídas estruturadas.
+- [x] S0.14 — Identificar a versão instalada do Hermes e sua configuração oficial para subprocesso MCP local.
+- [x] S0.15 — Registrar decisões D01–D05, fontes e pendências; revisar qualquer diferença entre documentação atual e este PRD.
+- [x] S0.ACEITE — Revisar a entrega: nenhuma rota foi inventada e cada bloqueio externo tem responsável e próximo passo registrado.
+- [x] S0.CONCLUSAO — Marcar a sprint concluída somente após cumprir o aceite; pendências de credenciais podem permanecer identificadas, mas viabilidade de callback deve estar decidida ou formalmente bloqueada.
 
 ### Sprint 1 — Fundação, contratos e servidor mínimo
 
 **Objetivo:** estabelecer ambiente reproduzível e base utilizável sem a conta. **Entregável:** servidor mínimo, cliente HTTP básico, schemas e configuração.
 
 - [ ] S1.01 — Confirmar instalação do Python 3.13 e funcionamento de SSL no Windows alvo.
-- [ ] S1.02 — Criar `.venv` na raiz sem alterar ambientes de outros projetos.
+- [x] S1.02 — Criar `.venv` na raiz sem alterar ambientes de outros projetos.
 - [ ] S1.03 — Instalar somente FastMCP, requests, Pydantic, python-dotenv, keyring e tzdata, com transitivas necessárias.
 - [ ] S1.04 — Registrar versões verificadas em `requirements.txt`; confirmar instalação reproduzível em ambiente limpo.
 - [ ] S1.05 — Criar a estrutura mínima `src` com os módulos que serão efetivamente implementados, sem arquivos arquiteturais adicionais vazios.
@@ -846,23 +850,124 @@ Possibilidades futuras, **sem implementação nesta versão**: integração NetO
 
 ## 21. Referências e grau de verificação
 
-Consulta documental realizada em **22/10/2026**. Este PRD combina requisitos do arquivo fornecido com decisões de projeto. Não houve acesso ao repositório do projeto, configuração do Hermes, aplicativo Developers ou conta de vendedor. Nenhuma chamada autenticada foi executada.
+Consulta documental realizada em **22/10/2026**, com nova inspeção na Sprint 0. Este PRD combina requisitos do arquivo fornecido com decisões de projeto. Na redação inicial não houve acesso ao repositório; a Sprint 0 inspecionou os arquivos locais, Git e a versão/CLI/fonte de transporte do Hermes. Não foram lidos segredos/configuração privada, nem acessados o aplicativo Developers ou a conta de vendedor. Nenhuma chamada comercial autenticada foi executada.
 
-Parte das páginas oficiais do Mercado Livre retornou HTTP 403 na leitura direta. Foi possível consultar conteúdo indexado de páginas oficiais para autenticação, pedidos, itens/bulk e visitas. Portanto, endpoints e mudanças identificadas estão fundamentados nessas fontes, mas limites e permissões específicos devem ser reconfirmados durante a Sprint 0. Falha de acesso à documentação não deve ser confundida com falha da API comercial.
+Na redação inicial, parte das páginas oficiais retornou HTTP 403 e foram usados conteúdos indexados. Na Sprint 0, foi possível ler integralmente oito páginas oficiais pelo MCP documental do Mercado Livre: autenticação, pedidos, itens/bulk, visitas, in-house, criação, permissões e gestão de aplicação. Isso confirma contratos publicados, não permissões reais ou comportamento autenticado; lacunas remanescentes estão em D01–D03 e no README. Falha de acesso à documentação não deve ser confundida com falha da API comercial.
 
 | Ref. | Fonte oficial | Uso no planejamento |
 | --- | --- | --- |
-| S01 | [Mercado Livre — Autenticação e Autorização](https://developers.mercadolivre.com.br/autenticacao-e-autorizacao) e [versão oficial em inglês](https://developers.mercadolivre.com.br/en_us/authentication-and-authorization) | Authorization Code, PKCE, token e rotação; conteúdo indexado consultado |
+| S01 | [Mercado Livre — Autenticação e Autorização](https://developers.mercadolivre.com.br/pt_br/autenticacao-e-autorizacao) | Authorization Code, PKCE, token, identidade e rotação; página integral na Sprint 0 |
 | S02 | [Mercado Livre — Configuração ou requisitos prévios](https://developers.mercadolivre.com.br/pt_br/lojas-oficiais/configuracao-ou-requisitos-previos) | Consulta `/users/me`; conteúdo indexado consultado |
-| S03 | [Mercado Livre — Orders](https://developers.mercadolivre.com.br/pt_br/gerenciamento-de-vendas/gerenciamento-de-vendas) | Busca, filtros de criação, estados, granularidade e disponibilidade; conteúdo indexado consultado |
-| S04 | [Mercado Livre — Busca de itens](https://developers.mercadolivre.com.br/pt_br/itens-e-buscas) | Busca própria, scan e migração bulk; conteúdo indexado com atualização de 31/08/2026 consultado |
-| S05 | [Mercado Livre — Visitas](https://developers.mercadolivre.com.br/pt_br/como-comecar/recurso-visits) | Visitas por intervalo e limites temporais; conteúdo indexado com atualização de 02/01/2026 consultado |
-| S06 | [Mercado Livre — Desenvolvimento in-house](https://developers.mercadolivre.com.br/pt_br/autenticacao-e-autorizacao/desenvolvimento-in-house) | Redirect URI HTTPS exata, mínimos de integração e segurança; conteúdo indexado consultado |
+| S03 | [Mercado Livre — Orders](https://developers.mercadolivre.com.br/pt_br/gerenciamento-de-vendas) | Página integral, atualização 21/09/2026: horas, 12 meses, cancelados excluídos; teto de paginação não identificado |
+| S04 | [Mercado Livre — Busca de itens](https://developers.mercadolivre.com.br/pt_br/itens-e-buscas) | Página integral, atualização 31/08/2026: scan, cursor 5 min e novo bulk; lote novo não explícito |
+| S05 | [Mercado Livre — Visitas](https://developers.mercadolivre.com.br/pt_br/recurso-visits) | Página integral, atualização 02/01/2026: extensão 150 dias e um ID por GET; retenção/fronteiras pendentes |
+| S06 | [Mercado Livre — Desenvolvimento in-house](https://developers.mercadolivre.com.br/pt_br/desenvolvimento-in-house) | Página integral, atualização 06/10/2026: HTTPS, titularidade e separação Mercado Livre/Pago |
 | S07 | [FastMCP — Tools](https://gofastmcp.com/servers/tools) e [Running your server](https://gofastmcp.com/deployment/running-server) | Ferramentas síncronas, estruturas de retorno e execução stdio |
 | S08 | [Requests — Advanced Usage](https://requests.readthedocs.io/en/latest/user/advanced/) | Sessão reutilizável e uso de recursos HTTP |
 | S09 | [Pydantic — Serialization](https://docs.pydantic.dev/latest/concepts/serialization/) | Serialização de contratos estruturados |
 | S10 | [keyring — Documentação oficial](https://keyring.readthedocs.io/en/latest/) | Armazenamento em serviço de credenciais do sistema |
 | S11 | [Python — zoneinfo](https://docs.python.org/3/library/zoneinfo.html) | Fuso IANA e dependência tzdata para ambientes sem base do sistema |
+| S12 | [Mercado Livre — Crie uma aplicação](https://developers.mercadolivre.com.br/pt_br/crie-uma-aplicacao-no-mercado-livre) | Página integral: HTTPS obrigatório e PKCE configurável; não prova aceitação de loopback |
+| S13 | [Mercado Livre — Permissões funcionais](https://developers.mercadolivre.com.br/pt_br/permissoes-funcionais) | Página integral: áreas de recursos e leitura; seleção efetiva depende do portal |
+| S14 | [Mercado Livre — Gerencie seu aplicativo](https://developers.mercadolivre.com.br/pt_br/gerencie-seu-aplicativo) | Página integral, atualização 15/10/2026: separação de aplicações Mercado Livre/Pago |
+| S15 | [FastMCP — Installation](https://gofastmcp.com/getting-started/installation.md) e [metadados PyPI](https://pypi.org/pypi/fastmcp/json) | FastMCP 4.1.3, Python >=3.10 e classificador 3.13; não instalado/verificado |
+| S16 | [Hermes — MCP Config Reference](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference) | Fonte oficial confrontada com `hermes --version`, ajuda CLI e transporte instalado; integração futura no README |
 
 Os limites internos de 20/50 registros, 20 IDs, 120 dias, 500 GETs, 180 segundos, 5 minutos OAuth, timeouts e 256 KiB são decisões deste PRD. Não foram apresentados como limites oficiais da plataforma. A metodologia `created_paid_v1` também é uma decisão do produto, sujeita a revisão explícita antes de mudar o significado das métricas.
+
+## 22. Registro da execução da Sprint 0 — 22/10/2026
+
+Entrega documental detalhada no [README](README.md): inventário/reaproveitamento, contrato OAuth, matriz de endpoints, permissões candidatas, procedimento condicional de callback, Hermes instalado, decisões e evidências S0-E01–S0-E06. Referência da base: commit `8d6f55e`, branch `main`; modificação anterior de S1.02 preservada. Não há código de aplicação ou padrões implementados; não foram iniciadas as sprints seguintes.
+
+As marcações S0.04/S0.09/S0.11/S0.13 representam **confirmação documental**, não exercício autenticado. S0.ACEITE registra a revisão da entrega e dos bloqueios; não equivale ao encerramento integral. S0.CONCLUSAO permanece aberto pelos itens abaixo.
+
+| Tarefa aberta | Situação / responsável / próximo passo |
+| --- | --- |
+| S0.05 | D01 bloqueada por entrada humana; Felipe/gestor + desenvolvedor confirmam aplicação, titularidade, permissões, offline e PKCE no DevCenter, sem compartilhar segredos |
+| S0.06 | Atualização §23: concluída por confirmação de Felipe do cadastro da URI; HTTPS confiável e grant real permanecem separados/pendentes |
+| S0.07 | D02 formalmente bloqueada; definir host/porta/rota somente com a URI acordada; configurar resolução/certificado e comprovar HTTPS confiável conforme roteiro no README |
+| S0.08 | Condicional ainda não decidida: não houve rejeição observada; se houver, Felipe + desenvolvedor registram evidência e aprovam mudança mínima antes de qualquer callback externo |
+| S0.10 | D03 parcial; desenvolvedor deve confirmar teto de offset/resultados e limite de página de pedidos via documentação/suporte; precisão horária já documentada |
+| S0.12 | D03 parcial; desenvolvedor deve confirmar retenção, fronteira final e timestamps com offset em visitas; extensão de 150 dias e um ID por GET já documentados |
+| S0.CONCLUSAO | Não encerrada integralmente: preservar itens acima abertos; bloqueio D02 formalizado permite fundação sem credenciais, não autenticação real |
+
+Pendências adicionais rastreadas em D03/D04/D05: lote máximo do novo bulk (não herdar 20 do legado), validação real do cursor, descoberta no Hermes/timeout efetivo e instalação limpa em Python 3.13. Responsável técnico: desenvolvedor, nas sprints correspondentes. Nada foi instalado, nenhuma credencial foi lida/criada e nenhum commit/push foi executado.
+
+### Complemento acompanhado — pesquisa e separação das dependências
+
+Nova consulta documental em 22/10/2026, com timestamp local coletado às 17:47:51 UTC−03. Resultados, URLs e roteiro passo a passo estão no README, nas seções de pesquisa complementar e acompanhamento guiado. As marcações existentes foram preservadas; nenhum novo item foi concluído nesta rodada.
+
+| Responsabilidade | Itens / resultado |
+| --- | --- |
+| Autônoma documental | S0.10/S0.12 pesquisados em mais de um idioma; contratos confirmados e lacunas registradas abaixo, sem estimativas oficiais inventadas |
+| Manual no DevCenter — Felipe | S0.05: aplicação, titularidade, leitura/offline e PKCE; S0.06: cadastrar URI candidata, salvar e reabrir para comprovar persistência |
+| Local assistida — desenvolvedor + Felipe | S0.07: conferir porta, consentir com ferramenta/CA, gerar certificado protegido e comprovar HTTPS no loopback com diagnóstico temporário sem OAuth |
+| Condicional — Felipe + desenvolvedor | S0.08: só após rejeição observada, decidir menor ajuste; sem infraestrutura externa automática |
+| Externa técnica — desenvolvedor/suporte oficial | Máximo de página/offset de pedidos, retenção/fronteiras de visitas e lote do novo bulk; perguntas prontas no README, sem chamado aberto nem sondagem de carga |
+
+**S0.10:** Orders PT e ES reiteram precisão horária e exemplo `paging.limit=50`, mas não publicam teto inequívoco de página/offset/resultados. FAQ encontrada sobre limite próximo de 1.000 trata de itens/scan, não de pedidos; não usar para esta tarefa. Mantida aberta. Em implementação futura, respeitar cobertura, deduplicação e orçamento; particionar em horas quando suportado e declarar `PARTIAL_DATA` se não for possível concluir. Isso não valida um teto numérico.
+
+**S0.12:** páginas de visitas PT, ES e EN corroboram intervalo máximo de 150 dias e um ID por GET; não esclarecem retenção histórica de `/items/visits`, inclusividade de `date_to` ou timestamps com offset. O total dos últimos dois anos pertence a outra rota. Uma página EN para integrações CBT menciona disponibilidade em até 48 horas e unicidade diária em itens locais; é ressalva complementar a confirmar em MLB, não prova de compradores únicos no período ou de dado consolidado hoje. Mantida aberta; não prometer equivalência de dias UTC/São Paulo sem evidência.
+
+**Ordem acompanhada:** conferir aplicação/permissões → testar aceitação da URI no portal → somente após consentimento preparar certificado/diagnóstico HTTPS → registrar provas. A documentação oficial exige HTTPS/URI exata, mas não garante aceitação deste IP/porta na aplicação real. Grant OAuth completo pertence à Sprint 2 e só será executado com receptor/state/PKCE/cofre implementados, nunca por cópia manual de código/token.
+
+**Entrada da Sprint 1:** escopo, contratos e medidas essenciais estão documentados; a viabilidade do callback ainda não foi comprovada. A fundação sem credenciais pode ser autorizada com D01/D02 e limitações D03 explícitas (§5/§16), sem declarar a Sprint 0 integralmente concluída. Antes de avançar, Felipe deve aceitar essa condição ou solicitar resolução das pendências primeiro e autorizar expressamente a Sprint 1. Nenhuma instalação de dependências, scaffold, deploy ou implementação de sprint posterior foi executada nesta rodada.
+
+## 23. Recorte OAuth antecipado e acompanhado — 22/10/2026
+
+**Autorização de escopo:** Felipe aprovou explicitamente os pré-requisitos mínimos e o recorte OAuth antecipado, sem executar a Sprint 1 integral. Na pergunta separada sobre confiança TLS escolheu **implementar sem instalar CA**. Este registro complementa o histórico da §22; não fecha sprints por antecipação.
+
+**Implementação:** `src/auth.py`, `src/client.py`, `src/schemas.py` e `src/__init__.py`; CLI administrativa, não ferramenta MCP extra. Há PKCE S256, state imprevisível/uso único, listener HTTPS somente `127.0.0.1:8000/callback`, validação de rota/Host/parâmetros, erros sem payloads sensíveis, backend nativo WinVault, lock de processo e rotação serializada. O marcador `refresh_in_flight` é salvo/readback antes do POST e impede reutilização automática do refresh após resultado incerto ou crash. POST OAuth não tem retry; consulta de perfil faz no máximo uma renovação e um replay do GET.
+
+**Pré-requisitos restritos:** ambiente `.venv-oauth` Python 3.13.15, preservando a `.venv` original; requests, python-dotenv, keyring e Pydantic com transitivas fixadas em requirements. Imports, pip check e instalação limpa do recorte foram exercitados. Não foram instalados FastMCP/tzdata nem criados módulos vazios de server/tools; servidor stdio e ferramentas MCP continuam fora desta execução.
+
+**Credenciais:** `.env` carregado pela raiz, sem imprimir/editar seu conteúdo. Nomes oficiais `ML_CLIENT_ID`/`ML_CLIENT_SECRET`, com aliases explícitos `CLIENT_ID`/`CLIENT_SECRET` do exemplo preexistente; conflito entre nomes é erro. O primeiro diagnóstico falhou por formato do Client ID. Felipe corrigiu a configuração localmente e o agente repetiu `check`, obtendo `success=true`, WinVaultKeyring disponível, certificado carregado, PKCE S256 e URI correta. Isso não comprova Client Secret aceito pela API ou PKCE habilitado no portal. Nenhum segredo foi exposto nem identificador normalizado pelo agente.
+
+**TLS:** certificado de desenvolvimento autoassinado com SAN IP, criado fora do repositório/OneDrive em `%LOCALAPPDATA%\DiasMoto\mercadolivre-mcp\tls`, em pasta protegida por ACL. Não foi instalada CA nem alterada a confiança do Windows. Cliente diagnóstico com confiança explícita isolada confirmou HTTP 200/TLS/IP; rota desconhecida retornou 404. Confiança padrão rejeitou o certificado e a CLI bloqueou OAuth antes de abrir o navegador. Portanto **S0.07 permanece aberto** por certificado confiável no navegador, não por ausência do listener.
+
+**Evidências sem API comercial:** cofre Windows real com escrita/readback/remoção de dados sintéticos, round-trip do registro sem imprimir segredos, lock exclusivo/readquisição, HTTPS real local, PKCE recalculado, state incorreto/replay recusados. Troca de código/perfil/rotação/timeout/401 foram exercitados com cliente remoto **sintético** e identificados assim no README; isso não é consulta ou renovação real do Mercado Livre. Nenhuma suíte automatizada, pytest ou arquivo test_*.py foi criado.
+
+**Revisão independente tratada:** corrigidos e exercitados a renovação duplicada pela CLI `refresh` e o deadlock de cleanup caso a thread não inicie. Adicionado orçamento de socket de 45s ao transporte requests/urllib3 fixado; watchdog interrompe headers/corpo lentos, inclusive resposta HTTP/1.0 com fechamento da conexão. Em TLS local, orçamento diagnóstico de 0,2s interrompeu headers em 0,221s e corpo em 0,259s; resposta normal em 0,004s. Resolução DNS/conexão anterior ao envio não possui garantia absoluta de cancelamento: permanece uma limitação explícita, sem alegar timeout global rígido ou repetir POST OAuth. Nenhuma evidência sintética foi promovida a validação da API real.
+
+| Item | Situação após este recorte |
+| --- | --- |
+| S0.05 / D01 | Aplicação criada segundo Felipe; permissões e PKCE reais ainda não conferidos; tarefa aberta |
+| S0.06 | Concluído com evidência informada pelo responsável: URI local aceita no portal; não implica grant completo |
+| S0.07 / D02 | Listener/TLS local funcional, mas confiança Windows/navegador pendente por decisão expressa; tarefa aberta |
+| S0.08 | Sem rejeição do portal informada; nenhuma infraestrutura externa necessária/adotada |
+| S0.10 / S0.12 | Lacunas documentais de limites/retenção/fronteiras permanecem abertas, sem relação com este recorte |
+| S1.* / S2.* | Nenhum checkbox adicional foi marcado nesta rodada; pré-requisitos e implementação antecipada estão descritos aqui, sem declarar aceites das sprints |
+| Autorização, refresh e `/users/me` reais | **Não executados**: configuração local passou, mas confiança TLS padrão e consentimento/PKCE/permissões ainda pendentes; manter aceites reais abertos |
+
+**Checkpoint — 22/10/2026, 19:36 UTC−03:** configuração local aprovada por `check` real. Diagnóstico `tls-only` executado por cinco segundos sem OAuth: confiança padrão rejeitou com `CERTIFICATE_VERIFY_FAILED`, confiança explícita isolada obteve HTTP 200; subprocesso terminou com código 0/stdout vazio e porta 8000 liberada. Navegador não foi aberto. Mantida S0.07 aberta; nenhuma marcação de sprint foi alterada nesta rodada.
+
+**Próxima etapa acompanhada:** decidir confiança local do certificado, preservando a decisão anterior de não instalar CA até nova autorização; conferir PKCE/permissões no portal. Só após esses desbloqueios executar consentimento oficial, validar `/users/me` e comprovar persistência/renovação real. Não avançar ao restante da Sprint 1 sem nova autorização.
+
+### Atualização de confiança TLS — 22/10/2026, 19:41 UTC−03
+
+Felipe autorizou **instalar a CA local**, substituindo a recusa anterior somente para essa operação. Instalado mkcert v1.4.4 do release oficial Windows AMD64 em pasta local protegida; CAROOT exclusivo `%LOCALAPPDATA%\DiasMoto\mercadolivre-mcp\ca`, `TRUST_STORES=system` restrito ao subprocesso. A CA foi encontrada exatamente uma vez em **CurrentUser\\Root** por leitura posterior; pasta com ACL de usuário, SYSTEM e administradores. Não foi usado CAROOT de terceiros, alterado PATH, instalado servidor externo ou iniciado OAuth.
+
+Emitido certificado com SAN IP `127.0.0.1`, ativo nos caminhos já configurados em `tls\callback.pem` e `tls\callback-key.pem`, fora do OneDrive/repositório. Par autoassinado anterior preservado com sufixo `.selfsigned-20261022-194131.bak`. Certificado/chave novos foram carregados antes da troca. Certificado válido até 22/01/2029 às 19:41:31 UTC−03; `rootCA-key.pem` nunca deve ser compartilhado ou versionado.
+
+**Comprovação executada:** `check` real passou; diagnóstico `tls-only` real respondeu HTTP 200 usando `ssl.create_default_context()` sem CAfile especial/verify=False; cadeia nativa Windows aceita. Subprocesso encerrou com código 0/stdout vazio e nenhuma escuta restante na porta 8000. Isso resolve o bloqueio de confiança padrão do cliente; o campo fixo `browser_trust=not_checked` de `check` não é uma nova falha. Navegador em si não foi aberto/observado.
+
+**Checkpoint restante de S0.07:** Felipe deve abrir a URI no Edge/Chrome durante `tls-only` e confirmar ausência de aviso e resposta diagnóstica. Até essa observação, S0.07 permanece aberto. Em seguida conferir PKCE/permissões e decidir o grant acompanhado; nenhuma autenticação/renovação/API real foi executada nesta instalação. Não houve alteração de checkboxes nesta rodada nem avanço para a Sprint 1.
+
+## 24. Encerramento da Sprint 0 com ressalvas — 22/10/2026
+
+**Decisão:** após a orientação de diagnóstico HTTPS, Felipe confirmou “Tudo certo” e autorizou fechar a Sprint 0. Registrado às 19:47 UTC−03. Essa confirmação conclui a observação no navegador de `https://127.0.0.1:8000/callback`, sem aviso de certificado e com resposta diagnóstica, **conforme informado pelo responsável**; não é inspeção direta da tela pelo agente.
+
+**Aceite de viabilidade:** cadastro da URI informado por Felipe, callback somente em loopback/porta 8000, CA exclusiva em CurrentUser Root, configuração/cofre verificados, HTTPS com validação padrão e cadeia Windows aceitos, encerramento e liberação da porta comprovados. Roteiro de operação/remoção no README. S0.07 concluído. S0.08 **não aplicável**: a solução local foi aceita e validada, portanto não se executou caminho de rejeição, túnel ou infraestrutura externa; sua marcação indica aplicabilidade resolvida, não rejeição simulada.
+
+O encerramento é **com ressalvas explícitas**, não confirmação integral de todos os contratos externos. Mantidos abertos os IDs originais abaixo, sem modificar seu texto ou inventar limites/permissões:
+
+| Pendência transferida | Responsável | Próxima verificação / condição |
+| --- | --- | --- |
+| S0.05 / D01 — permissões mínimas e PKCE reais | Felipe + desenvolvedor | Conferir rótulos/níveis no DevCenter antes do grant acompanhado da Sprint 2; criação da aplicação e configuração local já confirmadas, mas não provam permissões |
+| S0.10 / D03 — teto de paginação de pedidos | Desenvolvedor | Obter confirmação oficial/suporte antes de fixar limites na Sprint 3 (S3.09–S3.15); precisão horária documentada; preservar PARTIAL_DATA se cobertura não puder ser comprovada |
+| S0.12 / D03 — retenção e fronteiras de visitas | Desenvolvedor | Esclarecer contrato oficial e observar limites autorizados na Sprint 4 (S4.13/S4.18); intervalo máximo de 150 dias e um ID por GET já documentados; não atribuir retenção inexistente |
+
+Lote máximo do novo bulk permanece em D03 para S4.05; D05 cobre a stack completa ainda não instalada. O recorte OAuth antecipado continua **implementado/exercitado localmente, pendente de grant e validação reais**. Não foram obtidos/renovados tokens reais nem consultado `/users/me`; VM03/VM05 e os aceites de conta permanecem pendentes.
+
+**Handoff:** Sprint 0 encerrada com essas ressalvas, sem apagar pendências. A Sprint 1 integral permanece aguardando **nova autorização expressa**; suas marcações foram preservadas, inclusive S1.02 preexistente. Nenhum código, credencial, certificado ou instalação adicional foi alterado neste encerramento; apenas documentação/checklist. Sem commit/push.
 
